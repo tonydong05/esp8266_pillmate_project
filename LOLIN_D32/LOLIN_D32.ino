@@ -24,7 +24,9 @@ DoseItem doses[10];   // 최대 10개 저장
 int doseCount = 0;
 
 //마그네틱 센서 핀
-// const int MAGNET_PIN = 4; -> 주석 해제 필요
+// const int MAGNET_PIN = 12; -> 주석 해제 필요
+const int ledPin = 9;      // LED
+const int buzzerPin = 8;   // 부저
 
 // int prevMagState = HIGH;
 
@@ -52,30 +54,28 @@ void setup()
 
 
 void loop()
-  {
-  if (Serial2.available()) 
-    { // UNO에서 메시지 수신 확인
-      String msg = Serial2.readStringUntil('\n');
-      msg.trim();  // 공백 제거
+{
+    // UNO → ESP32 메시지
+    if (Serial2.available()) 
+    {
+        String msg = Serial2.readStringUntil('\n');
+        msg.trim();
 
-      Serial.println("[UNO → ESP32] " + msg);
+        Serial.println("[UNO → ESP32] " + msg);
 
-      // chk 요청 → 오늘 약 정보 보내기
-      if (msg == "chk") {
-        sendDoseInfoToUNO();
-      }
+        // 1) UNO가 chk 보내면 → 약 정보 전달
+        if (msg == "chk") {
+            sendDoseInfoToUNO();
+        }
 
+        // 2) UNO가 confirm 보내면 → 서버로 POST
+        if (msg.startsWith("confirm")) {
+            Serial.println("[UNO → ESP32] confirm 수신 → 서버 전송 시작");
+            confirmDose();
+        }
     }
 
-    // 🔥 마그네틱 센서 변화 감지
-    // int magState = digitalRead(MAGNET_PIN);
-
-    // // LOW로 바뀌면 → 약통 열림 → confirmDose() 실행
-    // if (prevMagState == HIGH && magState == LOW) {
-    //   Serial.println("🔔 약통 열림 감지! 복약 처리 요청");
-    //   confirmDose();  
-    // }
-
+    // 🔍 PC 시리얼 테스트용
     if (Serial.available()) {
         String s = Serial.readStringUntil('\n');
         s.trim();
@@ -84,11 +84,8 @@ void loop()
             confirmDose();
         }
     }
+}
 
-
-
-    // prevMagState = magState;
-  }
 
 //----------------------------------------------
 // 오늘 약 정보 서버에서 GET
